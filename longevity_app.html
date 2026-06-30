@@ -3257,146 +3257,38 @@ function renderPlan(p) {
 /* ══════════════════════════════════════
    CLAUDE API CALL
 ══════════════════════════════════════ */
-const RECOMMENDATIONS = `
-LONGEVITY DIET RESEARCH — RECOMMENDATION FILES & SAFETY RULES
 
-IMPORTANT: This information is for general nutrition and longevity guidance only.
-It does not constitute medical advice. Never prescribe or recommend medications.
-
-=== MEDITERRANEAN DIET ===
-Key foods: Olive oil (extra virgin), fatty fish (salmon/sardines/mackerel), legumes, whole grains, leafy greens, berries, nuts, herbs (turmeric/garlic/rosemary).
-Avoid: Red meat (limit), processed meats, refined grains, added sugars, ultra-processed foods.
-Cellular mechanisms: Mitochondrial Health, Telomere Preservation, Gut Microbiota Diversity, NF-kB Suppression, Membrane Protection.
-Safety rules: CKD — limit high-potassium foods & legumes; Fish allergy — use flaxseeds/chia for omega-3; Blood thinners — consistent vitamin K intake; Gluten intolerance — use quinoa/rice instead.
-
-=== PLANT-BASED DIET ===
-Key foods: Lentils, black beans, chickpeas, tofu, leafy greens, oats, quinoa, berries, walnuts, flaxseeds, turmeric, ginger, green tea.
-Avoid: Processed meats, red meat, refined carbs, added sugars, sugary drinks.
-Cellular mechanisms: AMPK Activation (mimics anti-diabetic effects — NOT a medication), mTOR Inhibition, Autophagy Activation, FOXO3 Activation, Endogenous Antioxidant Defense.
-Safety rules: B12 — supplement if fully plant-based; Soy allergy — use lentils/chickpeas instead of tofu; CKD — limit high-potassium vegetables; High-fiber sensitivity — introduce gradually; Diabetes medication users — diet can lower blood sugar, inform healthcare provider.
-
-=== OKINAWAN DIET ===
-Key foods: Okinawan sweet potato, tofu, bitter melon (goya), seaweed, turmeric, jasmine/green tea, miso, fish (moderate).
-Principle: Hara hachi bu — eat until 80% full.
-Avoid: Refined sugars, processed foods, large portions.
-Cellular mechanisms: Autophagy Activation, mTOR Inhibition, AMPK Activation, Mitophagy Stimulation, Glycemic Stability.
-Safety rules: Soy allergy — avoid tofu/miso; Iodine sensitivity/thyroid — limit seaweed to 2-3x/week; CKD — limit seaweed, soy; Blood sugar medication users — bitter melon can lower blood glucose, inform healthcare provider; High sodium — limit miso/soy sauce if hypertension.
-
-=== DASH DIET ===
-Key foods: All vegetables (especially leafy greens), fruits, whole grains, low-fat dairy, lean protein, legumes, nuts, olive oil. Use herbs over salt.
-Avoid: High sodium (max 2300mg/day), red meat, full-fat dairy, added sugars, alcohol, processed foods.
-Cellular mechanisms: Glycemic Stability, Na+/K+-ATPase Pump Optimization, Angiotensin II/AT1R Suppression, eNOS Optimization, NF-kB Suppression.
-Safety rules: CKD — HIGH RISK, DASH is high-potassium, requires modified plan with doctor; ACE inhibitors/ARBs — monitor potassium carefully; Diabetes medication — DASH improves glycemic control, blood sugar may drop, inform healthcare provider.
-
-=== BLOOD SUGAR / PREDIABETES — CROSS-DIET SYNTHESIS ===
-Condition: Uncontrolled blood sugar activates RAGE receptors, stiffening cells and accelerating biological aging. Sustained high blood sugar shortens telomeres, impairs mitochondrial function, drives chronic inflammation.
-Most relevant diets: Plant-Based (AMPK activation, mTOR inhibition), DASH (glycemic stability), Okinawan (bitter melon, caloric restriction), Mediterranean (mitochondrial protection).
-Top avoid foods: Sugary drinks/sodas (Risk 90/100), Processed/ultra-processed foods (85/100), White bread/rice/refined grains (82/100), Fast food/fried foods (80/100), Alcohol (75/100), Red/processed meats (70/100).
-Top eat foods: Legumes/lentils/chickpeas (Boost 88/100), Leafy greens/spinach/kale/broccoli (84/100), Whole grains/oats/quinoa (80/100), Bitter melon & turmeric (76/100), Fatty fish/salmon/sardines (72/100), Green tea & jasmine tea (65/100).
-Key safety rules: CKD — limit high-potassium foods; ACE inhibitors — monitor potassium; High-fiber sensitivity — introduce gradually; Fish/soy allergy — substitute with plant-based proteins; Blood sugar medication users — inform healthcare provider of dietary changes.
-`;
-
-async function loadPlan() {
-    if (planData) return; // already loaded this session
-
-    document.getElementById('t1-loading').style.display = 'flex';
-    document.getElementById('t1-error').style.display   = 'none';
-    document.getElementById('t1-main').style.display    = 'none';
-
-    // Check cache
-    const cached     = localStorage.getItem(PLAN_KEY);
-    const cachedDate = localStorage.getItem(PLAN_DATE_KEY);
+async function loadPlan {
+    const cached = localStorage.getItem('topic1_plan');
+    const cachedDate = localStorage.getItem('topic1_plan_date');
     if (cached && cachedDate === todayStr()) {
-        renderPlan(JSON.parse(cached));
+        planData = JSON.parse(cached);
+        renderPlan();
         return;
     }
-
-    const profileRaw = localStorage.getItem('longevity_profile');
-    const profile = profileRaw ? JSON.parse(profileRaw) : {};
-
-    const ageGuidance = {
-        '0–30':  'Young adult — focus on building healthy habits and preventing future insulin resistance. Emphasise high-energy foods with stable glucose release.',
-        '31–60': 'Middle-aged adult — metabolic rate slowing, visceral fat risk increasing. Prioritise portion control, AMPK activation, and anti-inflammatory foods.',
-        '61+':   'Older adult — muscle mass preservation (sarcopenia risk) is critical alongside blood sugar control. Prioritise protein quality, gentle fibre introduction, and anti-inflammatory foods. Cellular repair mechanisms (autophagy/mTOR) are especially important.'
-    };
-    const weightGuidance = {
-        'Under 140 lbs / 63 kg':  'Lower body weight — focus on nutrient density over caloric restriction.',
-        '140–180 lbs / 63–82 kg': 'Healthy weight range — balanced approach to blood sugar and longevity.',
-        '180–220 lbs / 82–100 kg':'Moderately elevated weight — caloric quality and glycemic control are key priorities. Bitter melon, legumes, and fibre-rich foods especially beneficial.',
-        'Over 220 lbs / 100 kg':  'Higher body weight — insulin resistance risk is elevated. Strong emphasis on low glycemic index foods, AMPK activation, and avoiding all refined carbohydrates and sugary drinks.'
-    };
-    const ageCtx    = ageGuidance[profile.ageRange]    || '';
-    const weightCtx = weightGuidance[profile.weightRange] || '';
-
-    const userContext = `USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ') || 'None reported'}
-- Medications: ${(profile.medications||[]).join(', ') || 'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ') || 'None reported'}
-- Dietary preference: ${profile.dietType || 'No restriction'}
-- Age range: ${profile.ageRange || 'Not specified'} — ${ageCtx}
-- Weight range: ${profile.weightRange || 'Not specified'} — ${weightCtx}
-- Activity: ${profile.activityLevel || 'Not specified'}`;
-
-    const prompt = `You are a longevity nutrition guide. Generate a personalised Blood Sugar & Prediabetes Risk plan.
-
-RESEARCH DATA:
-${RECOMMENDATIONS}
-
-${userContext}
-
-CRITICAL RULES:
-- You are NOT a medical professional. NEVER prescribe or mention any medications.
-- All advice is general nutrition and longevity guidance only.
-- Always advise consulting a healthcare provider for medical decisions.
-- Return ONLY valid JSON, no markdown, no extra text.
-
-Return exactly this JSON structure:
-{
-  "intro": "One short punchy sentence (max 12 words) about blood sugar and ageing — mention RAGE receptors, keep it plain and simple, no jargon",
-  "safety_notes": [{"text": "personalised safety rule for this user"}],
-  "avoid": [{"name": "food", "reason": "brief longevity reason", "score": 85, "score_level": "high"}],
-  "eat": [{"name": "food", "reason": "brief longevity reason", "score": 80, "score_level": "low"}],
-  "week_plan": [
-    {"day": "Monday", "breakfast": "...", "lunch": "...", "dinner": "...", "snack": "..."}
-  ],
-  "week_2_plan": [
-    {"day": "Monday", "breakfast": "...", "lunch": "...", "dinner": "...", "snack": "..."}
-  ],
-  "week_3_plan": [
-    {"day": "Monday", "breakfast": "...", "lunch": "...", "dinner": "...", "snack": "..."}
-  ],
-  "why_it_works": "One simple sentence on why this plan extends lifespan"
-}
-
-Rules: 5-6 items in avoid, 5-6 in eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan), each with all 7 days — vary the meals so users don't repeat the same food every week. score_level: high=70-100, medium=40-69, low=1-39. Personalise safety_notes to user's conditions and allergies. Keep all text short for mobile display.`;
-
+    document.getElementById('t1-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: Blood Sugar & Prediabetes.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
     try {
         const res = await fetch('/.netlify/functions/chat', {
             method: 'POST',
-            headers: {
-                'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-                model: 'claude-3-5-haiku-20241022',
-                max_tokens: 4000,
-                messages: [{ role: 'user', content: prompt }]
-            })
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
         });
-
-        if (!res.ok) throw new Error(`API error ${res.status}`);
         const data = await res.json();
-        let text = data.content[0].text.trim();
-        if (text.startsWith('```')) text = text.split('\n').slice(1,-1).join('\n');
-        const plan = JSON.parse(text);
-        localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
-        localStorage.setItem(PLAN_DATE_KEY, todayStr());
-        renderPlan(plan);
-    } catch (err) {
-        console.error(err);
-        document.getElementById('t1-loading').style.display = 'none';
-        document.getElementById('t1-error').style.display   = 'block';
+        planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic1_plan', JSON.stringify(planData));
+        localStorage.setItem('topic1_plan_date', todayStr());
+        renderPlan();
+    } catch(e) {
+        document.getElementById('t1-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
     }
 }
+
 
 /* ══════════════════════════════════════
    TOPIC 5 — MITOCHONDRIAL HEALTH
@@ -3419,32 +3311,37 @@ function extendPlan5(){t5state.totalDays+=7;while(t5state.daysDone.length<t5stat
 function removePlanWeek5(){if(t5state.totalDays<=7)return;const removed=t5state.daysDone.splice(t5state.totalDays-7,7);const xpR=removed.filter(Boolean).length*100;t5state.totalDays-=7;if(xpR>0){t5state.xp=Math.max(0,t5state.xp-xpR);t5state.streak=t5state.daysDone.filter(Boolean).length;updateXP5(0);}saveState5();renderWeekDots5();renderDayCards5();showToast(`↩ Week ${Math.ceil(t5state.totalDays/7)+1} removed`);}
 function toggleChallenge5(){if(t5state.challengeStarted){t5state.challengeStarted=false;saveState5();document.getElementById('t5challengeBtn').textContent='Start';document.getElementById('t5challengeBtn').style.background='#fff';document.getElementById('t5challengeBtn').style.color='#e08800';document.getElementById('t5challengeSub').textContent='Complete all 7 days to earn your badge';showToast('↩ Challenge reset');}else{t5state.challengeStarted=true;saveState5();document.getElementById('t5challengeBtn').textContent='Undo';document.getElementById('t5challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t5challengeBtn').style.color='#fff';document.getElementById('t5challengeSub').textContent='Challenge in progress — keep going!';showToast('🏆 7-Day Energy Reset Challenge started!');}}
 function renderPlan5(p){t5planData=p;document.getElementById('t5-safety').innerHTML=(p.safety_notes||[]).map(n=>`<div class="safety-item"><div class="safety-dot"></div><div class="safety-item-text">${n.text}</div></div>`).join('');document.getElementById('t5-closing').textContent=p.why_it_works||'';renderAvoid5(p.avoid||[]);renderEat5(p.eat||[]);while(t5state.daysDone.length<t5state.totalDays)t5state.daysDone.push(false);renderWeekDots5();renderDayCards5();if(t5state.challengeStarted){document.getElementById('t5challengeBtn').textContent='Undo';document.getElementById('t5challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t5challengeBtn').style.color='#fff';document.getElementById('t5challengeSub').textContent='Challenge in progress — keep going!';}updateXP5(0);setTimeout(()=>{document.querySelectorAll('#t5-main .score-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},80);});},200);document.getElementById('t5-loading').style.display='none';document.getElementById('t5-main').style.display='block';}
-async function loadPlan5(){if(t5planData)return;document.getElementById('t5-loading').style.display='flex';document.getElementById('t5-error').style.display='none';document.getElementById('t5-main').style.display='none';const cached=localStorage.getItem(PLAN_KEY5);const cachedDate=localStorage.getItem(PLAN_DATE_KEY5);if(cached&&cachedDate===todayStr()){renderPlan5(JSON.parse(cached));return;}
-const profileRaw=localStorage.getItem('longevity_profile');const profile=profileRaw?JSON.parse(profileRaw):{};
-const ageCtxMito={'0–30':'Young adult — establish mitochondrial health habits early. Focus on CoQ10-rich foods and antioxidants to prevent early cellular energy decline.','31–60':'Middle-aged adult — mitochondrial efficiency naturally declines from age 35. Prioritise CoQ10, magnesium, and PGC-1α activating foods.','61+':'Older adult — mitochondrial density and NAD+ levels are significantly reduced. Strong focus on CoQ10, B vitamins, and mitophagy-stimulating foods to clear damaged mitochondria.'}[profile.ageRange]||'';
-const prompt=`You are a longevity nutrition guide. Generate a personalised Low Energy & Mitochondrial Health plan.
+async function loadPlan5 {
+    const cached = localStorage.getItem('topic5_plan');
+    const cachedDate = localStorage.getItem('topic5_plan_date');
+    if (cached && cachedDate === todayStr()) {
+        t5planData = JSON.parse(cached);
+        renderDayCards5();
+        return;
+    }
+    document.getElementById('t5-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: Low Energy & Fatigue.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
+        });
+        const data = await res.json();
+        t5planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic5_plan', JSON.stringify(t5planData));
+        localStorage.setItem('topic5_plan_date', todayStr());
+        renderDayCards5();
+    } catch(e) {
+        document.getElementById('t5-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan5()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
+    }
+}
 
-USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ')||'None reported'}
-- Medications: ${(profile.medications||[]).join(', ')||'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ')||'None reported'}
-- Dietary preference: ${profile.dietType||'No restriction'}
-- Age range: ${profile.ageRange||'Not specified'} — ${ageCtxMito}
-- Activity: ${profile.activityLevel||'Not specified'}
-
-MITOCHONDRIAL HEALTH RESEARCH:
-Foods harm mitochondria: Refined sugars (glycation damages electron transport chain, Risk 90), Trans fats/ultra-processed foods (directly damage mitochondrial membranes, Risk 86), Alcohol (mitochondrial toxin, uncouples oxidative phosphorylation, Risk 82), Refined carbs (blood sugar spikes flood mitochondria with ROS, Risk 78), Vegetable/seed oils high in omega-6 (oxidise easily inside mitochondria, Risk 68), Artificial sweeteners (disrupt gut-mitochondria axis, Risk 55).
-Foods support mitochondria: Fatty fish/salmon/mackerel (CoQ10 + omega-3 for mitochondrial membrane integrity, activates PGC-1α, Boost 92), Broccoli/cruciferous vegetables (sulforaphane activates Nrf2 antioxidant pathway, protects mitochondria, Boost 88), Berries/blueberries (anthocyanins reduce mitochondrial oxidative stress, Boost 84), Spinach/leafy greens (magnesium is cofactor for ATP synthesis, nitrates boost mitochondrial efficiency, Boost 80), Walnuts/almonds (magnesium, vitamin E, PGC-1α activation, Boost 76), Green tea/matcha (EGCG stimulates mitochondrial biogenesis, supports mitophagy, Boost 72), Avocado (healthy monounsaturated fats for mitochondrial membrane fluidity, Boost 65).
-Key mechanisms: PGC-1α activation (mitochondrial biogenesis — creates new mitochondria), mitophagy (clearing damaged mitochondria via Okinawan-style caloric moderation), CoQ10 in electron transport chain, AMPK activation reduces mitochondrial ROS, Nrf2/antioxidant pathway protects mitochondrial DNA, NAD+ production supports cellular energy.
-Safety: Thyroid condition — avoid excess cruciferous raw (cook instead); Blood thinners — consistent vitamin K from greens; Fish allergy — use walnuts, avocado, flaxseeds for omega-3; Nut allergy — use seeds and avocado instead; Diabetes medication — exercise + these foods can lower blood sugar, monitor closely; NEVER recommend medications.
-
-CRITICAL RULES: Not medical advice. Never prescribe medications. Personalise to user. Return ONLY valid JSON.
-
-Return exactly:
-{"intro":"One punchy sentence (max 12 words) about mitochondria and energy aging","safety_notes":[{"text":"personalised safety rule"}],"avoid":[{"name":"food","reason":"brief reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"brief reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_2_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_3_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"why_it_works":"One sentence on why this extends lifespan"}
-
-Rules: 5-6 avoid, 5-6 eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan) each with all 7 days — vary meals so users don't eat the same thing every week. score_level: high=70-100, medium=40-69, low=1-39. Short text for mobile. Avoid allergens.`;
-try{const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:4000,messages:[{role:'user',content:prompt}]})});if(!res.ok)throw new Error(`API error ${res.status}`);const data=await res.json();let text=data.content[0].text.trim();if(text.startsWith('```'))text=text.split('\n').slice(1,-1).join('\n');const plan=JSON.parse(text);localStorage.setItem(PLAN_KEY5,JSON.stringify(plan));localStorage.setItem(PLAN_DATE_KEY5,todayStr());renderPlan5(plan);}catch(err){console.error(err);document.getElementById('t5-loading').style.display='none';document.getElementById('t5-error').style.display='block';}}
 
 /* ══════════════════════════════════════
    TOPIC 7 — VITAMIN & NUTRIENT DEFICIENCY
@@ -3467,32 +3364,37 @@ function extendPlan7(){t7state.totalDays+=7;while(t7state.daysDone.length<t7stat
 function removePlanWeek7(){if(t7state.totalDays<=7)return;const removed=t7state.daysDone.splice(t7state.totalDays-7,7);const xpR=removed.filter(Boolean).length*100;t7state.totalDays-=7;if(xpR>0){t7state.xp=Math.max(0,t7state.xp-xpR);t7state.streak=t7state.daysDone.filter(Boolean).length;updateXP7(0);}saveState7();renderWeekDots7();renderDayCards7();showToast(`↩ Week ${Math.ceil(t7state.totalDays/7)+1} removed`);}
 function toggleChallenge7(){if(t7state.challengeStarted){t7state.challengeStarted=false;saveState7();document.getElementById('t7challengeBtn').textContent='Start';document.getElementById('t7challengeBtn').style.background='#fff';document.getElementById('t7challengeBtn').style.color='#e08800';document.getElementById('t7challengeSub').textContent='Complete all 7 days to earn your badge';showToast('↩ Challenge reset');}else{t7state.challengeStarted=true;saveState7();document.getElementById('t7challengeBtn').textContent='Undo';document.getElementById('t7challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t7challengeBtn').style.color='#fff';document.getElementById('t7challengeSub').textContent='Challenge in progress — keep going!';showToast('🏆 7-Day Nutrient Reset Challenge started!');}}
 function renderPlan7(p){t7planData=p;document.getElementById('t7-safety').innerHTML=(p.safety_notes||[]).map(n=>`<div class="safety-item"><div class="safety-dot"></div><div class="safety-item-text">${n.text}</div></div>`).join('');document.getElementById('t7-closing').textContent=p.why_it_works||'';renderAvoid7(p.avoid||[]);renderEat7(p.eat||[]);while(t7state.daysDone.length<t7state.totalDays)t7state.daysDone.push(false);renderWeekDots7();renderDayCards7();if(t7state.challengeStarted){document.getElementById('t7challengeBtn').textContent='Undo';document.getElementById('t7challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t7challengeBtn').style.color='#fff';document.getElementById('t7challengeSub').textContent='Challenge in progress — keep going!';}updateXP7(0);setTimeout(()=>{document.querySelectorAll('#t7-main .score-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},80);});},200);document.getElementById('t7-loading').style.display='none';document.getElementById('t7-main').style.display='block';}
-async function loadPlan7(){if(t7planData)return;document.getElementById('t7-loading').style.display='flex';document.getElementById('t7-error').style.display='none';document.getElementById('t7-main').style.display='none';const cached=localStorage.getItem(PLAN_KEY7);const cachedDate=localStorage.getItem(PLAN_DATE_KEY7);if(cached&&cachedDate===todayStr()){renderPlan7(JSON.parse(cached));return;}
-const profileRaw=localStorage.getItem('longevity_profile');const profile=profileRaw?JSON.parse(profileRaw):{};
-const ageCtxVit={'0–30':'Young adult — establish strong nutrient foundations now. Focus on Vitamin D, B12, iron, and omega-3s to support long-term cellular health.','31–60':'Middle-aged adult — nutrient absorption naturally declines. Prioritise Vitamin D3, B12, magnesium, and zinc to maintain energy and cellular repair.','61+':'Older adult — deficiencies are most impactful. Focus on Vitamin D3+K2, B12, folate, magnesium, and omega-3s to protect bones, cognition, and cardiovascular health.'}[profile.ageRange]||'';
-const prompt=`You are a longevity nutrition guide. Generate a personalised Vitamin & Nutrient Deficiency plan.
+async function loadPlan7 {
+    const cached = localStorage.getItem('topic7_plan');
+    const cachedDate = localStorage.getItem('topic7_plan_date');
+    if (cached && cachedDate === todayStr()) {
+        t7planData = JSON.parse(cached);
+        renderDayCards7();
+        return;
+    }
+    document.getElementById('t7-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: Vitamin & Nutrient Deficiency.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
+        });
+        const data = await res.json();
+        t7planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic7_plan', JSON.stringify(t7planData));
+        localStorage.setItem('topic7_plan_date', todayStr());
+        renderDayCards7();
+    } catch(e) {
+        document.getElementById('t7-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan7()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
+    }
+}
 
-USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ')||'None reported'}
-- Medications: ${(profile.medications||[]).join(', ')||'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ')||'None reported'}
-- Dietary preference: ${profile.dietType||'No restriction'}
-- Age range: ${profile.ageRange||'Not specified'} — ${ageCtxVit}
-- Activity: ${profile.activityLevel||'Not specified'}
-
-VITAMIN DEFICIENCY RESEARCH:
-Foods depleting nutrients: Ultra-processed foods (displace nutrient-dense foods, strip B vitamins during processing, Risk 90), Added sugars (deplete magnesium and B vitamins during metabolism, Risk 85), Alcohol (blocks absorption of Vitamin B1/B9/B12, depletes zinc and magnesium, Risk 82), Phytic acid in unsoaked grains/legumes (binds iron, zinc, calcium — reduces absorption by up to 80%, Risk 70), Excessive caffeine/coffee (increases urinary calcium and magnesium excretion, Risk 60), Refined cooking oils/trans fats (displace fat-soluble vitamins A/D/E/K, Risk 65).
-Foods replenishing nutrients: Fatty fish — salmon, sardines, mackerel (Vitamin D3 + omega-3 EPA/DHA, highest bioavailability, Boost 92), Eggs (Vitamin B12, D, choline, selenium — one of the most bioavailable nutrient packages, Boost 88), Leafy greens — spinach, kale, Swiss chard (Vitamin K1, folate, magnesium, iron, Boost 85), Legumes/lentils (iron, folate, B1, B6, magnesium — especially for plant-based diets, Boost 80), Nuts and seeds — sunflower seeds, pumpkin seeds, almonds (Vitamin E, magnesium, zinc, selenium, Boost 76), Liver and organ meats (Vitamin A, B12, folate, iron — most nutrient-dense food per calorie, Boost 90 — once weekly), Fermented dairy — yogurt, kefir (B12, calcium, Vitamin K2, probiotics enhance nutrient absorption, Boost 74).
-Key mechanisms: Vitamin D3 regulates over 200 genes including immune and longevity pathways (telomere maintenance). B12 and folate prevent DNA damage and hyperhomocysteinemia. Magnesium cofactor in 300+ enzymatic reactions. Omega-3 reduces inflammatory cytokines. Zinc supports immune function and DNA repair. Vitamin K2 activates osteocalcin and matrix Gla protein for calcium regulation.
-Safety: Blood thinners (warfarin) — Vitamin K from food is fine but avoid sudden drastic changes; consult doctor before high-K2 foods. Iron overload risk — avoid high-iron foods if haemochromatosis. Kidney disease — limit potassium-rich foods. B12 deficiency in vegans — fortified foods essential. NEVER recommend supplements or medications — food sources only.
-
-CRITICAL RULES: Not medical advice. Never prescribe medications or supplements — food sources only. Personalise to user. Return ONLY valid JSON.
-
-Return exactly:
-{"intro":"One punchy sentence (max 12 words) about nutrient gaps and longevity","safety_notes":[{"text":"personalised safety rule"}],"avoid":[{"name":"food","reason":"brief reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"brief reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_2_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_3_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"why_it_works":"One sentence on why this extends lifespan"}
-
-Rules: 5-6 avoid, 5-6 eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan) each with all 7 days — vary meals so users don't eat the same thing every week. score_level: high=70-100, medium=40-69, low=1-39. Short text for mobile. Prioritise most common deficiencies (D, B12, magnesium, omega-3). Avoid allergens.`;
-try{const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:4000,messages:[{role:'user',content:prompt}]})});if(!res.ok)throw new Error(`API error ${res.status}`);const data=await res.json();let text=data.content[0].text.trim();if(text.startsWith('```'))text=text.split('\n').slice(1,-1).join('\n');const plan=JSON.parse(text);localStorage.setItem(PLAN_KEY7,JSON.stringify(plan));localStorage.setItem(PLAN_DATE_KEY7,todayStr());renderPlan7(plan);}catch(err){console.error(err);document.getElementById('t7-loading').style.display='none';document.getElementById('t7-error').style.display='block';}}
 
 /* ══════════════════════════════════════
    TOPIC 8 — HIGH CHOLESTEROL
@@ -3515,32 +3417,37 @@ function extendPlan8(){t8state.totalDays+=7;while(t8state.daysDone.length<t8stat
 function removePlanWeek8(){if(t8state.totalDays<=7)return;const removed=t8state.daysDone.splice(t8state.totalDays-7,7);const xpR=removed.filter(Boolean).length*100;t8state.totalDays-=7;if(xpR>0){t8state.xp=Math.max(0,t8state.xp-xpR);t8state.streak=t8state.daysDone.filter(Boolean).length;updateXP8(0);}saveState8();renderWeekDots8();renderDayCards8();showToast(`↩ Week ${Math.ceil(t8state.totalDays/7)+1} removed`);}
 function toggleChallenge8(){if(t8state.challengeStarted){t8state.challengeStarted=false;saveState8();document.getElementById('t8challengeBtn').textContent='Start';document.getElementById('t8challengeBtn').style.background='#fff';document.getElementById('t8challengeBtn').style.color='#e08800';document.getElementById('t8challengeSub').textContent='Complete all 7 days to earn your badge';showToast('↩ Challenge reset');}else{t8state.challengeStarted=true;saveState8();document.getElementById('t8challengeBtn').textContent='Undo';document.getElementById('t8challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t8challengeBtn').style.color='#fff';document.getElementById('t8challengeSub').textContent='Challenge in progress — keep going!';showToast('🏆 7-Day Heart Health Challenge started!');}}
 function renderPlan8(p){t8planData=p;document.getElementById('t8-safety').innerHTML=(p.safety_notes||[]).map(n=>`<div class="safety-item"><div class="safety-dot"></div><div class="safety-item-text">${n.text}</div></div>`).join('');document.getElementById('t8-closing').textContent=p.why_it_works||'';renderAvoid8(p.avoid||[]);renderEat8(p.eat||[]);while(t8state.daysDone.length<t8state.totalDays)t8state.daysDone.push(false);renderWeekDots8();renderDayCards8();if(t8state.challengeStarted){document.getElementById('t8challengeBtn').textContent='Undo';document.getElementById('t8challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t8challengeBtn').style.color='#fff';document.getElementById('t8challengeSub').textContent='Challenge in progress — keep going!';}updateXP8(0);setTimeout(()=>{document.querySelectorAll('#t8-main .score-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},80);});},200);document.getElementById('t8-loading').style.display='none';document.getElementById('t8-main').style.display='block';}
-async function loadPlan8(){if(t8planData)return;document.getElementById('t8-loading').style.display='flex';document.getElementById('t8-error').style.display='none';document.getElementById('t8-main').style.display='none';const cached=localStorage.getItem(PLAN_KEY8);const cachedDate=localStorage.getItem(PLAN_DATE_KEY8);if(cached&&cachedDate===todayStr()){renderPlan8(JSON.parse(cached));return;}
-const profileRaw=localStorage.getItem('longevity_profile');const profile=profileRaw?JSON.parse(profileRaw):{};
-const ageCtxChol={'0–30':'Young adult — establish heart-healthy habits early. Prioritise soluble fibre and plant sterols to keep LDL low from the start.','31–60':'Middle-aged adult — LDL and triglycerides typically rise in this period. Focus on Portfolio Diet principles: soluble fibre, plant sterols, soy protein, and nuts.','61+':'Older adult — cardiovascular risk is highest. Emphasise omega-3 fatty acids, plant sterols, soluble fibre, and anti-inflammatory polyphenols for arterial protection.'}[profile.ageRange]||'';
-const prompt=`You are a longevity nutrition guide. Generate a personalised High Cholesterol plan.
+async function loadPlan8 {
+    const cached = localStorage.getItem('topic8_plan');
+    const cachedDate = localStorage.getItem('topic8_plan_date');
+    if (cached && cachedDate === todayStr()) {
+        t8planData = JSON.parse(cached);
+        renderDayCards8();
+        return;
+    }
+    document.getElementById('t8-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: High Cholesterol.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
+        });
+        const data = await res.json();
+        t8planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic8_plan', JSON.stringify(t8planData));
+        localStorage.setItem('topic8_plan_date', todayStr());
+        renderDayCards8();
+    } catch(e) {
+        document.getElementById('t8-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan8()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
+    }
+}
 
-USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ')||'None reported'}
-- Medications: ${(profile.medications||[]).join(', ')||'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ')||'None reported'}
-- Dietary preference: ${profile.dietType||'No restriction'}
-- Age range: ${profile.ageRange||'Not specified'} — ${ageCtxChol}
-- Activity: ${profile.activityLevel||'Not specified'}
-
-CHOLESTEROL RESEARCH:
-Foods raise LDL/harm arteries: Trans fats/partially hydrogenated oils (raise LDL, lower HDL simultaneously — worst dietary fat for cardiovascular longevity, Risk 95), Processed meats/bacon/sausages (saturated fat + sodium + nitrates accelerate arterial plaque, Risk 88), Full-fat dairy/butter in excess (saturated fat raises LDL cholesterol, Risk 78), Refined carbs/white bread/pastries (raise triglycerides and small dense LDL particles, Risk 82), Fried foods (oxidised fats damage arterial walls, Risk 85), Coconut oil in large amounts (high in saturated fat raises LDL — use minimally, Risk 65).
-Foods lower LDL/protect arteries: Oats and barley (beta-glucan soluble fibre binds cholesterol in gut — 3g/day reduces LDL by 5-10%, Boost 92), Legumes/lentils/chickpeas (soluble fibre + plant protein replaces animal protein, reduces LDL by 5%, Boost 88), Fatty fish/salmon/mackerel (omega-3 EPA/DHA reduces triglycerides by 25-35%, raises HDL, Boost 90), Nuts/almonds/walnuts (plant sterols + unsaturated fats lower LDL 5-10%, Boost 84), Avocado (monounsaturated fats raise HDL, lower LDL and triglycerides, Boost 80), Olive oil extra virgin (oleic acid + polyphenols reduce LDL oxidation, Boost 78), Berries/dark fruit (anthocyanins reduce LDL oxidation and arterial inflammation, Boost 74), Soy foods/edamame/tofu (plant protein lowers LDL 3-4% vs animal protein, Boost 70).
-Key mechanisms: Soluble fibre forms gel in gut binding bile acids (forcing liver to use LDL cholesterol to make more), plant sterols block cholesterol absorption in intestines, omega-3 reduces VLDL synthesis in liver, polyphenols prevent LDL oxidation (oxidised LDL is what triggers plaque), replacing saturated fat with unsaturated fat changes LDL particle size to large fluffy (less harmful).
-Safety: Statins/cholesterol medication — dietary changes complement but never replace prescribed medication; consult doctor before major diet shifts. Fish allergy — use flaxseeds, walnuts, chia for omega-3. Nut allergy — use seeds. Soy allergy — avoid soy foods. Thyroid conditions — cooked cruciferous vegetables only. NEVER recommend medications.
-
-CRITICAL RULES: Not medical advice. Never prescribe medications. Personalise to user. Return ONLY valid JSON.
-
-Return exactly:
-{"intro":"One punchy sentence (max 12 words) about cholesterol and arterial aging","safety_notes":[{"text":"personalised safety rule"}],"avoid":[{"name":"food","reason":"brief reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"brief reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_2_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_3_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"why_it_works":"One sentence on why this extends lifespan"}
-
-Rules: 5-6 avoid, 5-6 eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan) each with all 7 days — vary meals so users don't eat the same thing every week. score_level: high=70-100, medium=40-69, low=1-39. Short text for mobile. Prioritise Portfolio Diet principles. Avoid allergens.`;
-try{const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:4000,messages:[{role:'user',content:prompt}]})});if(!res.ok)throw new Error(`API error ${res.status}`);const data=await res.json();let text=data.content[0].text.trim();if(text.startsWith('```'))text=text.split('\n').slice(1,-1).join('\n');const plan=JSON.parse(text);localStorage.setItem(PLAN_KEY8,JSON.stringify(plan));localStorage.setItem(PLAN_DATE_KEY8,todayStr());renderPlan8(plan);}catch(err){console.error(err);document.getElementById('t8-loading').style.display='none';document.getElementById('t8-error').style.display='block';}}
 
 /* ══════════════════════════════════════
    TOPIC 9 — WEIGHT LOSS
@@ -3563,32 +3470,37 @@ function extendPlan9(){t9state.totalDays+=7;while(t9state.daysDone.length<t9stat
 function removePlanWeek9(){if(t9state.totalDays<=7)return;const removed=t9state.daysDone.splice(t9state.totalDays-7,7);const xpR=removed.filter(Boolean).length*100;t9state.totalDays-=7;if(xpR>0){t9state.xp=Math.max(0,t9state.xp-xpR);t9state.streak=t9state.daysDone.filter(Boolean).length;updateXP9(0);}saveState9();renderWeekDots9();renderDayCards9();showToast(`↩ Week ${Math.ceil(t9state.totalDays/7)+1} removed`);}
 function toggleChallenge9(){if(t9state.challengeStarted){t9state.challengeStarted=false;saveState9();document.getElementById('t9challengeBtn').textContent='Start';document.getElementById('t9challengeBtn').style.background='#fff';document.getElementById('t9challengeBtn').style.color='#e08800';document.getElementById('t9challengeSub').textContent='Complete all 7 days to earn your badge';showToast('↩ Challenge reset');}else{t9state.challengeStarted=true;saveState9();document.getElementById('t9challengeBtn').textContent='Undo';document.getElementById('t9challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t9challengeBtn').style.color='#fff';document.getElementById('t9challengeSub').textContent='Challenge in progress — keep going!';showToast('🏆 7-Day Metabolism Reset Challenge started!');}}
 function renderPlan9(p){t9planData=p;document.getElementById('t9-safety').innerHTML=(p.safety_notes||[]).map(n=>`<div class="safety-item"><div class="safety-dot"></div><div class="safety-item-text">${n.text}</div></div>`).join('');document.getElementById('t9-closing').textContent=p.why_it_works||'';renderAvoid9(p.avoid||[]);renderEat9(p.eat||[]);while(t9state.daysDone.length<t9state.totalDays)t9state.daysDone.push(false);renderWeekDots9();renderDayCards9();if(t9state.challengeStarted){document.getElementById('t9challengeBtn').textContent='Undo';document.getElementById('t9challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t9challengeBtn').style.color='#fff';document.getElementById('t9challengeSub').textContent='Challenge in progress — keep going!';}updateXP9(0);setTimeout(()=>{document.querySelectorAll('#t9-main .score-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},80);});},200);document.getElementById('t9-loading').style.display='none';document.getElementById('t9-main').style.display='block';}
-async function loadPlan9(){if(t9planData)return;document.getElementById('t9-loading').style.display='flex';document.getElementById('t9-error').style.display='none';document.getElementById('t9-main').style.display='none';const cached=localStorage.getItem(PLAN_KEY9);const cachedDate=localStorage.getItem(PLAN_DATE_KEY9);if(cached&&cachedDate===todayStr()){renderPlan9(JSON.parse(cached));return;}
-const profileRaw=localStorage.getItem('longevity_profile');const profile=profileRaw?JSON.parse(profileRaw):{};
-const ageCtxWt={'0–30':'Young adult — metabolism is still high. Focus on nutrient-dense whole foods and protein to build lean muscle while losing fat sustainably.','31–60':'Middle-aged adult — metabolism slows and visceral fat accumulates. Prioritise high-protein, high-fibre foods to support satiety, maintain muscle, and reduce belly fat.','61+':'Older adult — muscle loss (sarcopenia) is the key risk. High protein intake and resistance-supportive foods are critical; weight loss must preserve muscle mass.'}[profile.ageRange]||'';
-const prompt=`You are a longevity nutrition guide. Generate a personalised Weight Loss plan.
+async function loadPlan9 {
+    const cached = localStorage.getItem('topic9_plan');
+    const cachedDate = localStorage.getItem('topic9_plan_date');
+    if (cached && cachedDate === todayStr()) {
+        t9planData = JSON.parse(cached);
+        renderDayCards9();
+        return;
+    }
+    document.getElementById('t9-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: Weight Loss & Metabolic Health.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
+        });
+        const data = await res.json();
+        t9planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic9_plan', JSON.stringify(t9planData));
+        localStorage.setItem('topic9_plan_date', todayStr());
+        renderDayCards9();
+    } catch(e) {
+        document.getElementById('t9-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan9()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
+    }
+}
 
-USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ')||'None reported'}
-- Medications: ${(profile.medications||[]).join(', ')||'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ')||'None reported'}
-- Dietary preference: ${profile.dietType||'No restriction'}
-- Age range: ${profile.ageRange||'Not specified'} — ${ageCtxWt}
-- Activity: ${profile.activityLevel||'Not specified'}
-
-WEIGHT LOSS RESEARCH:
-Foods that cause weight gain/block fat loss: Ultra-processed foods (hyperpalatable, engineered to override satiety signals, calorie-dense, nutrient-poor, Risk 95), Liquid calories — sodas, fruit juices, alcohol (don't trigger satiety hormones; easy to overconsume 500+ kcal/day, Risk 90), Refined carbs/white bread/pastries (rapid blood sugar spikes → insulin surge → fat storage → crash → hunger, Risk 88), Added sugars (activate reward pathways making overeating easy, Risk 85), Trans fats (promote visceral abdominal fat specifically, Risk 82), Excessive processed snacks/crisps (designed for overconsumption, high caloric density, Risk 78).
-Foods that support fat loss and satiety: Legumes/lentils/chickpeas (highest satiety per calorie — protein + fibre combination reduces hunger hormones ghrelin, Boost 92), Eggs (complete protein + choline — most satiating breakfast, reduces caloric intake at lunch by 30%, Boost 88), Leafy greens/spinach/kale/broccoli (very low calorie density, high volume and fibre, supports gut bacteria that regulate weight, Boost 85), Whole oats (beta-glucan fibre slows gastric emptying, maintains satiety 4+ hours, reduces LDL simultaneously, Boost 82), Fatty fish/salmon (protein + omega-3 reduces inflammation linked to obesity, DHA supports fat oxidation, Boost 80), Greek yogurt/high-protein dairy (protein thermic effect burns 25-30% of calories during digestion, supports muscle retention, Boost 76), Nuts in moderation (healthy fats increase satiety — despite high calories, nut eaters have lower BMI in studies, Boost 70).
-Key mechanisms: Satiety hormones (leptin, GLP-1, PYY) activated by protein and fibre, thermic effect of food (protein burns 25-30% during digestion vs 3% for fat), insulin sensitivity (lower insulin = better fat oxidation), gut microbiome diversity (Akkermansia muciniphila linked to lower BMI), sleep and cortisol (poor sleep raises ghrelin), caloric density approach (eat by volume, not restriction).
-Safety: Diabetes medication — combining dietary changes with these foods can lower blood sugar significantly, monitor closely and consult doctor. Eating disorders — this plan is not suitable if there is a history of restrictive eating; please seek professional support. Pregnancy/breastfeeding — do not restrict calories. Underweight — this plan is not appropriate; consult a healthcare provider. NEVER recommend medications or supplements.
-
-CRITICAL RULES: Not medical advice. Never prescribe medications. Personalise to user. Return ONLY valid JSON.
-
-Return exactly:
-{"intro":"One punchy sentence (max 12 words) about weight and longevity","safety_notes":[{"text":"personalised safety rule"}],"avoid":[{"name":"food","reason":"brief reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"brief reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_2_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_3_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"why_it_works":"One sentence on why this extends lifespan"}
-
-Rules: 5-6 avoid, 5-6 eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan) each with all 7 days — vary meals so users don't eat the same thing every week. score_level: high=70-100, medium=40-69, low=1-39. Short text for mobile. Meals should be filling and high-protein. Avoid allergens.`;
-try{const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:4000,messages:[{role:'user',content:prompt}]})});if(!res.ok)throw new Error(`API error ${res.status}`);const data=await res.json();let text=data.content[0].text.trim();if(text.startsWith('```'))text=text.split('\n').slice(1,-1).join('\n');const plan=JSON.parse(text);localStorage.setItem(PLAN_KEY9,JSON.stringify(plan));localStorage.setItem(PLAN_DATE_KEY9,todayStr());renderPlan9(plan);}catch(err){console.error(err);document.getElementById('t9-loading').style.display='none';document.getElementById('t9-error').style.display='block';}}
 
 /* ══════════════════════════════════════
    TOPIC 10 — MUSCLE SORENESS & RECOVERY
@@ -3611,32 +3523,37 @@ function extendPlan10(){t10state.totalDays+=7;while(t10state.daysDone.length<t10
 function removePlanWeek10(){if(t10state.totalDays<=7)return;const removed=t10state.daysDone.splice(t10state.totalDays-7,7);const xpR=removed.filter(Boolean).length*100;t10state.totalDays-=7;if(xpR>0){t10state.xp=Math.max(0,t10state.xp-xpR);t10state.streak=t10state.daysDone.filter(Boolean).length;updateXP10(0);}saveState10();renderWeekDots10();renderDayCards10();showToast(`↩ Week ${Math.ceil(t10state.totalDays/7)+1} removed`);}
 function toggleChallenge10(){if(t10state.challengeStarted){t10state.challengeStarted=false;saveState10();document.getElementById('t10challengeBtn').textContent='Start';document.getElementById('t10challengeBtn').style.background='#fff';document.getElementById('t10challengeBtn').style.color='#e08800';document.getElementById('t10challengeSub').textContent='Complete all 7 days to earn your badge';showToast('↩ Challenge reset');}else{t10state.challengeStarted=true;saveState10();document.getElementById('t10challengeBtn').textContent='Undo';document.getElementById('t10challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t10challengeBtn').style.color='#fff';document.getElementById('t10challengeSub').textContent='Challenge in progress — keep going!';showToast('🏆 7-Day Recovery Boost Challenge started!');}}
 function renderPlan10(p){t10planData=p;document.getElementById('t10-safety').innerHTML=(p.safety_notes||[]).map(n=>`<div class="safety-item"><div class="safety-dot"></div><div class="safety-item-text">${n.text}</div></div>`).join('');document.getElementById('t10-closing').textContent=p.why_it_works||'';renderAvoid10(p.avoid||[]);renderEat10(p.eat||[]);while(t10state.daysDone.length<t10state.totalDays)t10state.daysDone.push(false);renderWeekDots10();renderDayCards10();if(t10state.challengeStarted){document.getElementById('t10challengeBtn').textContent='Undo';document.getElementById('t10challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t10challengeBtn').style.color='#fff';document.getElementById('t10challengeSub').textContent='Challenge in progress — keep going!';}updateXP10(0);setTimeout(()=>{document.querySelectorAll('#t10-main .score-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},80);});},200);document.getElementById('t10-loading').style.display='none';document.getElementById('t10-main').style.display='block';}
-async function loadPlan10(){if(t10planData)return;document.getElementById('t10-loading').style.display='flex';document.getElementById('t10-error').style.display='none';document.getElementById('t10-main').style.display='none';const cached=localStorage.getItem(PLAN_KEY10);const cachedDate=localStorage.getItem(PLAN_DATE_KEY10);if(cached&&cachedDate===todayStr()){renderPlan10(JSON.parse(cached));return;}
-const profileRaw=localStorage.getItem('longevity_profile');const profile=profileRaw?JSON.parse(profileRaw):{};
-const ageCtxRec={'0–30':'Young adult — recovery is fast but building anti-inflammatory habits now prevents injury accumulation. Focus on protein timing and antioxidant-rich foods.','31–60':'Middle-aged adult — recovery slows significantly. Prioritise anti-inflammatory omega-3s, polyphenols, and protein to reduce DOMS and maintain training consistency.','61+':'Older adult — muscle protein synthesis is blunted (anabolic resistance). Higher protein intake and leucine-rich foods are essential for muscle repair and preventing sarcopenia.'}[profile.ageRange]||'';
-const prompt=`You are a longevity nutrition guide. Generate a personalised Muscle Soreness & Recovery plan.
+async function loadPlan10 {
+    const cached = localStorage.getItem('topic10_plan');
+    const cachedDate = localStorage.getItem('topic10_plan_date');
+    if (cached && cachedDate === todayStr()) {
+        t10planData = JSON.parse(cached);
+        renderDayCards10();
+        return;
+    }
+    document.getElementById('t10-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: Muscle Soreness & Recovery.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
+        });
+        const data = await res.json();
+        t10planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic10_plan', JSON.stringify(t10planData));
+        localStorage.setItem('topic10_plan_date', todayStr());
+        renderDayCards10();
+    } catch(e) {
+        document.getElementById('t10-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan10()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
+    }
+}
 
-USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ')||'None reported'}
-- Medications: ${(profile.medications||[]).join(', ')||'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ')||'None reported'}
-- Dietary preference: ${profile.dietType||'No restriction'}
-- Age range: ${profile.ageRange||'Not specified'} — ${ageCtxRec}
-- Activity: ${profile.activityLevel||'Not specified'}
-
-MUSCLE RECOVERY RESEARCH:
-Foods that worsen soreness/delay recovery: Alcohol (impairs muscle protein synthesis by up to 37%, increases inflammation and oxidative stress post-exercise, Risk 92), Processed meats/high saturated fat (promote pro-inflammatory cytokines IL-6, TNF-α that worsen DOMS, Risk 82), Refined sugars/ultra-processed snacks (spike insulin, promote inflammation, deplete glycogen quality, Risk 80), Trans fats (increase systemic inflammation, impair cell membrane repair, Risk 85), Excessive caffeine post-exercise (interferes with sleep — which is when 80% of muscle repair happens, Risk 65), Fried foods/oxidised oils (increase oxidative stress at the very time muscles need antioxidants most, Risk 75).
-Foods that accelerate recovery: Tart cherry juice/cherries (reduces muscle damage markers CK and LDH by 25%, reduces DOMS duration by 30% via anthocyanins, Boost 92), Fatty fish/salmon/sardines (EPA/DHA inhibit COX-2 inflammation pathway, reduce DOMS, support muscle protein synthesis, Boost 90), Eggs (complete amino acid profile including leucine — key trigger of mTOR muscle protein synthesis pathway, Boost 88), Whole milk/dairy (leucine + fast protein + carbohydrate — post-exercise combination superior to protein alone in studies, Boost 82), Berries/blueberries (anthocyanins reduce exercise-induced oxidative stress by 30%, accelerate strength recovery, Boost 85), Leafy greens/spinach (nitrates increase oxygen efficiency, magnesium supports muscle relaxation and reduces cramps, Boost 78), Watermelon/citrulline-rich foods (L-citrulline reduces muscle soreness 24-72hrs post exercise, Boost 74), Turmeric/ginger (curcumin reduces CK and inflammatory markers comparable to ibuprofen in studies — without side effects, Boost 80).
-Key mechanisms: Muscle protein synthesis (leucine threshold activates mTOR — needs 2-3g leucine per meal), glycogen replenishment (carbohydrate post-exercise restores energy stores), inflammatory resolution (omega-3, polyphenols resolve acute inflammation without blunting adaptation), satellite cell activation (supports muscle repair), sleep quality (HGH peaks during deep sleep — critical recovery window), antioxidant defence (Nrf2 pathway).
-Safety: Blood thinners — high omega-3 foods can enhance anticoagulant effect, consult doctor. NSAIDs/anti-inflammatory medication — turmeric and curcumin enhance effects; consult doctor before combining. Kidney disease — limit very high protein intake. Dairy allergy — use plant-based protein sources. NEVER recommend supplements, medications, or protein powders.
-
-CRITICAL RULES: Not medical advice. Never prescribe medications or supplements. Personalise to user. Return ONLY valid JSON.
-
-Return exactly:
-{"intro":"One punchy sentence (max 12 words) about recovery and muscle longevity","safety_notes":[{"text":"personalised safety rule"}],"avoid":[{"name":"food","reason":"brief reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"brief reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_2_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_3_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"why_it_works":"One sentence on why this extends lifespan"}
-
-Rules: 5-6 avoid, 5-6 eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan) each with all 7 days — vary meals so users don't eat the same thing every week. score_level: high=70-100, medium=40-69, low=1-39. Short text for mobile. Meals should be high-protein and anti-inflammatory. Avoid allergens.`;
-try{const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:4000,messages:[{role:'user',content:prompt}]})});if(!res.ok)throw new Error(`API error ${res.status}`);const data=await res.json();let text=data.content[0].text.trim();if(text.startsWith('```'))text=text.split('\n').slice(1,-1).join('\n');const plan=JSON.parse(text);localStorage.setItem(PLAN_KEY10,JSON.stringify(plan));localStorage.setItem(PLAN_DATE_KEY10,todayStr());renderPlan10(plan);}catch(err){console.error(err);document.getElementById('t10-loading').style.display='none';document.getElementById('t10-error').style.display='block';}}
 
 /* ══════════════════════════════════════
    TOPIC 6 — GUT HEALTH
@@ -3659,32 +3576,37 @@ function extendPlan6(){t6state.totalDays+=7;while(t6state.daysDone.length<t6stat
 function removePlanWeek6(){if(t6state.totalDays<=7)return;const removed=t6state.daysDone.splice(t6state.totalDays-7,7);const xpR=removed.filter(Boolean).length*100;t6state.totalDays-=7;if(xpR>0){t6state.xp=Math.max(0,t6state.xp-xpR);t6state.streak=t6state.daysDone.filter(Boolean).length;updateXP6(0);}saveState6();renderWeekDots6();renderDayCards6();showToast(`↩ Week ${Math.ceil(t6state.totalDays/7)+1} removed`);}
 function toggleChallenge6(){if(t6state.challengeStarted){t6state.challengeStarted=false;saveState6();document.getElementById('t6challengeBtn').textContent='Start';document.getElementById('t6challengeBtn').style.background='#fff';document.getElementById('t6challengeBtn').style.color='#e08800';document.getElementById('t6challengeSub').textContent='Complete all 7 days to earn your badge';showToast('↩ Challenge reset');}else{t6state.challengeStarted=true;saveState6();document.getElementById('t6challengeBtn').textContent='Undo';document.getElementById('t6challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t6challengeBtn').style.color='#fff';document.getElementById('t6challengeSub').textContent='Challenge in progress — keep going!';showToast('🏆 7-Day Gut Reset Challenge started!');}}
 function renderPlan6(p){t6planData=p;document.getElementById('t6-safety').innerHTML=(p.safety_notes||[]).map(n=>`<div class="safety-item"><div class="safety-dot"></div><div class="safety-item-text">${n.text}</div></div>`).join('');document.getElementById('t6-closing').textContent=p.why_it_works||'';renderAvoid6(p.avoid||[]);renderEat6(p.eat||[]);while(t6state.daysDone.length<t6state.totalDays)t6state.daysDone.push(false);renderWeekDots6();renderDayCards6();if(t6state.challengeStarted){document.getElementById('t6challengeBtn').textContent='Undo';document.getElementById('t6challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t6challengeBtn').style.color='#fff';document.getElementById('t6challengeSub').textContent='Challenge in progress — keep going!';}updateXP6(0);setTimeout(()=>{document.querySelectorAll('#t6-main .score-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},80);});},200);document.getElementById('t6-loading').style.display='none';document.getElementById('t6-main').style.display='block';}
-async function loadPlan6(){if(t6planData)return;document.getElementById('t6-loading').style.display='flex';document.getElementById('t6-error').style.display='none';document.getElementById('t6-main').style.display='none';const cached=localStorage.getItem(PLAN_KEY6);const cachedDate=localStorage.getItem(PLAN_DATE_KEY6);if(cached&&cachedDate===todayStr()){renderPlan6(JSON.parse(cached));return;}
-const profileRaw=localStorage.getItem('longevity_profile');const profile=profileRaw?JSON.parse(profileRaw):{};
-const ageCtxGut={'0–30':'Young adult — establish a diverse microbiome early. Focus on high-fibre prebiotic foods and fermented foods to build a resilient gut ecosystem.','31–60':'Middle-aged adult — microbiome diversity naturally declines. Prioritise prebiotic fibre, polyphenols, and fermented foods to restore beneficial bacteria.','61+':'Older adult — intestinal permeability increases with age (leaky gut risk). Focus on gut barrier-strengthening foods, anti-inflammatory polyphenols, and gentle fibre introduction.'}[profile.ageRange]||'';
-const prompt=`You are a longevity nutrition guide. Generate a personalised Poor Digestion & Gut Health plan.
+async function loadPlan6 {
+    const cached = localStorage.getItem('topic6_plan');
+    const cachedDate = localStorage.getItem('topic6_plan_date');
+    if (cached && cachedDate === todayStr()) {
+        t6planData = JSON.parse(cached);
+        renderDayCards6();
+        return;
+    }
+    document.getElementById('t6-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: Gut Health & Microbiome.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
+        });
+        const data = await res.json();
+        t6planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic6_plan', JSON.stringify(t6planData));
+        localStorage.setItem('topic6_plan_date', todayStr());
+        renderDayCards6();
+    } catch(e) {
+        document.getElementById('t6-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan6()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
+    }
+}
 
-USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ')||'None reported'}
-- Medications: ${(profile.medications||[]).join(', ')||'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ')||'None reported'}
-- Dietary preference: ${profile.dietType||'No restriction'}
-- Age range: ${profile.ageRange||'Not specified'} — ${ageCtxGut}
-- Activity: ${profile.activityLevel||'Not specified'}
-
-GUT HEALTH RESEARCH:
-Foods harm gut: Ultra-processed foods (destroy microbiome diversity, damage intestinal lining, Risk 92), Added sugars/artificial sweeteners (feed harmful bacteria, disrupt microbiome, Risk 88), Alcohol (damages intestinal lining, increases leaky gut permeability, Risk 84), Red/processed meats (promote harmful TMAO-producing bacteria, Risk 78), Refined carbs/white bread (rapidly ferment to feed harmful bacteria over beneficial ones, Risk 72), Emulsifiers/additives in packaged foods (disrupt mucus layer protecting gut lining, Risk 65).
-Foods support gut: Legumes/lentils/chickpeas (prebiotic fibre feeds Bifidobacterium and Lactobacillus, highest gut diversity impact, Boost 92), Fermented foods/yogurt/kefir (live probiotics directly seed microbiome, Boost 88), Garlic and onions (inulin prebiotic feeds beneficial bacteria, Boost 84), Whole oats (beta-glucan fibre, microbiome diversity, reduces intestinal inflammation, Boost 80), Leafy greens/spinach/kale (polyphenols + fibre, feeds Akkermansia muciniphila which strengthens gut barrier, Boost 76), Berries (polyphenols selectively feed beneficial bacteria, Boost 72), Olive oil (oleic acid and polyphenols reduce gut inflammation, support microbiome diversity, Boost 68).
-Key mechanisms: Gut microbiota diversity (Mediterranean diet — 38% increase in beneficial bacteria), short-chain fatty acid production from fibre fermentation, intestinal barrier integrity (tight junction proteins), Akkermansia muciniphila for mucus layer health, systemic inflammation reduction via gut-immune axis.
-Safety: High-fiber sensitivity — introduce fibre slowly, start with well-cooked legumes; Soy allergy — avoid fermented soy (miso, tempeh); Dairy/lactose intolerance — use non-dairy kefir or kimchi instead; CKD — limit high-potassium legumes; IBS — avoid raw garlic/onions if sensitive, use cooked instead; NEVER recommend medications.
-
-CRITICAL RULES: Not medical advice. Never prescribe medications. Personalise to user. Return ONLY valid JSON.
-
-Return exactly:
-{"intro":"One punchy sentence (max 12 words) about gut health and longevity","safety_notes":[{"text":"personalised safety rule"}],"avoid":[{"name":"food","reason":"brief reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"brief reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_2_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_3_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"why_it_works":"One sentence on why this extends lifespan"}
-
-Rules: 5-6 avoid, 5-6 eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan) each with all 7 days — vary meals so users don't eat the same thing every week. score_level: high=70-100, medium=40-69, low=1-39. Short text for mobile. Introduce fibre gradually across all 3 weeks. Avoid allergens.`;
-try{const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:4000,messages:[{role:'user',content:prompt}]})});if(!res.ok)throw new Error(`API error ${res.status}`);const data=await res.json();let text=data.content[0].text.trim();if(text.startsWith('```'))text=text.split('\n').slice(1,-1).join('\n');const plan=JSON.parse(text);localStorage.setItem(PLAN_KEY6,JSON.stringify(plan));localStorage.setItem(PLAN_DATE_KEY6,todayStr());renderPlan6(plan);}catch(err){console.error(err);document.getElementById('t6-loading').style.display='none';document.getElementById('t6-error').style.display='block';}}
 
 /* ══════════════════════════════════════
    TOPIC 3 — BRAIN HEALTH
@@ -3707,32 +3629,37 @@ function extendPlan3(){t3state.totalDays+=7;while(t3state.daysDone.length<t3stat
 function removePlanWeek3(){if(t3state.totalDays<=7)return;const removed=t3state.daysDone.splice(t3state.totalDays-7,7);const xpR=removed.filter(Boolean).length*100;t3state.totalDays-=7;if(xpR>0){t3state.xp=Math.max(0,t3state.xp-xpR);t3state.streak=t3state.daysDone.filter(Boolean).length;updateXP3(0);}saveState3();renderWeekDots3();renderDayCards3();showToast(`↩ Week ${Math.ceil(t3state.totalDays/7)+1} removed`);}
 function toggleChallenge3(){if(t3state.challengeStarted){t3state.challengeStarted=false;saveState3();document.getElementById('t3challengeBtn').textContent='Start';document.getElementById('t3challengeBtn').style.background='#fff';document.getElementById('t3challengeBtn').style.color='#e08800';document.getElementById('t3challengeSub').textContent='Complete all 7 days to earn your badge';showToast('↩ Challenge reset');}else{t3state.challengeStarted=true;saveState3();document.getElementById('t3challengeBtn').textContent='Undo';document.getElementById('t3challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t3challengeBtn').style.color='#fff';document.getElementById('t3challengeSub').textContent='Challenge in progress — keep going!';showToast('🏆 7-Day Brain Health Challenge started!');}}
 function renderPlan3(p){t3planData=p;document.getElementById('t3-safety').innerHTML=(p.safety_notes||[]).map(n=>`<div class="safety-item"><div class="safety-dot"></div><div class="safety-item-text">${n.text}</div></div>`).join('');document.getElementById('t3-closing').textContent=p.why_it_works||'';renderAvoid3(p.avoid||[]);renderEat3(p.eat||[]);while(t3state.daysDone.length<t3state.totalDays)t3state.daysDone.push(false);renderWeekDots3();renderDayCards3();if(t3state.challengeStarted){document.getElementById('t3challengeBtn').textContent='Undo';document.getElementById('t3challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t3challengeBtn').style.color='#fff';document.getElementById('t3challengeSub').textContent='Challenge in progress — keep going!';}updateXP3(0);setTimeout(()=>{document.querySelectorAll('#t3-main .score-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},80);});},200);document.getElementById('t3-loading').style.display='none';document.getElementById('t3-main').style.display='block';}
-async function loadPlan3(){if(t3planData)return;document.getElementById('t3-loading').style.display='flex';document.getElementById('t3-error').style.display='none';document.getElementById('t3-main').style.display='none';const cached=localStorage.getItem(PLAN_KEY3);const cachedDate=localStorage.getItem(PLAN_DATE_KEY3);if(cached&&cachedDate===todayStr()){renderPlan3(JSON.parse(cached));return;}
-const profileRaw=localStorage.getItem('longevity_profile');const profile=profileRaw?JSON.parse(profileRaw):{};
-const ageCtxBrain={'0–30':'Young adult — build neuroprotective habits early. Focus on DHA-rich foods and reducing sugar spikes that impair memory consolidation.','31–60':'Middle-aged adult — BDNF levels naturally declining. Prioritise omega-3s, polyphenols, and foods that promote cerebral blood flow.','61+':'Older adult — neuroinflammation and cognitive decline risk rising. Strong focus on anti-inflammatory foods, DHA, and antioxidants that cross the blood-brain barrier.'}[profile.ageRange]||'';
-const prompt=`You are a longevity nutrition guide. Generate a personalised Brain Health & Mental Clarity plan.
+async function loadPlan3 {
+    const cached = localStorage.getItem('topic3_plan');
+    const cachedDate = localStorage.getItem('topic3_plan_date');
+    if (cached && cachedDate === todayStr()) {
+        t3planData = JSON.parse(cached);
+        renderPlan3();
+        return;
+    }
+    document.getElementById('t3-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: Brain Health & Mental Clarity.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
+        });
+        const data = await res.json();
+        t3planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic3_plan', JSON.stringify(t3planData));
+        localStorage.setItem('topic3_plan_date', todayStr());
+        renderPlan3();
+    } catch(e) {
+        document.getElementById('t3-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan3()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
+    }
+}
 
-USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ')||'None reported'}
-- Medications: ${(profile.medications||[]).join(', ')||'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ')||'None reported'}
-- Dietary preference: ${profile.dietType||'No restriction'}
-- Age range: ${profile.ageRange||'Not specified'} — ${ageCtxBrain}
-- Activity: ${profile.activityLevel||'Not specified'}
-
-BRAIN HEALTH RESEARCH:
-Foods harm brain: Sugary drinks (glucose spikes impair memory, Risk 88), Processed/ultra-processed foods (AGEs damage neurons, Risk 85), Trans fats/fried foods (damage neuronal membranes, Risk 82), Alcohol (neurotoxic, shrinks hippocampus, Risk 78), Refined carbs (blood sugar spikes impair focus, Risk 72), Processed meats (nitrites linked to neurodegeneration, Risk 68).
-Foods protect brain: Fatty fish/salmon/sardines (DHA builds neuronal membranes, activates BDNF, Boost 90), Blueberries/berries (flavonoids cross blood-brain barrier, reduce neuroinflammation, Boost 87), Walnuts (ALA omega-3, polyphenols reduce oxidative stress in brain, Boost 83), Turmeric/curcumin (crosses BBB, suppresses NF-kB neuroinflammation, Boost 80), Dark chocolate 70%+ (flavanols improve cerebral blood flow via eNOS, Boost 75), Leafy greens (folate, lutein, vitamin K for myelin health, Boost 72), Green tea (L-theanine + caffeine synergy improves focus without jitteriness, Boost 65).
-Key mechanisms: BDNF (Brain-Derived Neurotrophic Factor) activation, neuroinflammation suppression via NF-kB, DHA incorporation into neuronal membranes, cerebral blood flow via eNOS/nitric oxide.
-Safety: Fish allergy — use walnuts/flaxseeds/algae oil for omega-3; Blood thinners — consistent vitamin K (greens) intake; Nut allergy — avoid walnuts, use blueberries and turmeric instead; Thyroid — limit green tea if sensitive to caffeine; NEVER recommend medications.
-
-CRITICAL RULES: Not medical advice. Never prescribe medications. Personalise to user. Return ONLY valid JSON.
-
-Return exactly:
-{"intro":"One punchy sentence (max 12 words) about food and brain aging","safety_notes":[{"text":"personalised safety rule"}],"avoid":[{"name":"food","reason":"brief reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"brief reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_2_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_3_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"why_it_works":"One sentence on why this extends lifespan"}
-
-Rules: 5-6 avoid, 5-6 eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan) each with all 7 days — vary meals so users don't eat the same thing every week. score_level: high=70-100, medium=40-69, low=1-39. Short text for mobile. Avoid allergens.`;
-try{const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:4000,messages:[{role:'user',content:prompt}]})});if(!res.ok)throw new Error(`API error ${res.status}`);const data=await res.json();let text=data.content[0].text.trim();if(text.startsWith('```'))text=text.split('\n').slice(1,-1).join('\n');const plan=JSON.parse(text);localStorage.setItem(PLAN_KEY3,JSON.stringify(plan));localStorage.setItem(PLAN_DATE_KEY3,todayStr());renderPlan3(plan);}catch(err){console.error(err);document.getElementById('t3-loading').style.display='none';document.getElementById('t3-error').style.display='block';}}
 
 /* ══════════════════════════════════════
    TOPIC 4 — SLEEP QUALITY
@@ -3755,32 +3682,37 @@ function extendPlan4(){t4state.totalDays+=7;while(t4state.daysDone.length<t4stat
 function removePlanWeek4(){if(t4state.totalDays<=7)return;const removed=t4state.daysDone.splice(t4state.totalDays-7,7);const xpR=removed.filter(Boolean).length*100;t4state.totalDays-=7;if(xpR>0){t4state.xp=Math.max(0,t4state.xp-xpR);t4state.streak=t4state.daysDone.filter(Boolean).length;updateXP4(0);}saveState4();renderWeekDots4();renderDayCards4();showToast(`↩ Week ${Math.ceil(t4state.totalDays/7)+1} removed`);}
 function toggleChallenge4(){if(t4state.challengeStarted){t4state.challengeStarted=false;saveState4();document.getElementById('t4challengeBtn').textContent='Start';document.getElementById('t4challengeBtn').style.background='#fff';document.getElementById('t4challengeBtn').style.color='#e08800';document.getElementById('t4challengeSub').textContent='Complete all 7 days to earn your badge';showToast('↩ Challenge reset');}else{t4state.challengeStarted=true;saveState4();document.getElementById('t4challengeBtn').textContent='Undo';document.getElementById('t4challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t4challengeBtn').style.color='#fff';document.getElementById('t4challengeSub').textContent='Challenge in progress — keep going!';showToast('🏆 7-Day Sleep Quality Challenge started!');}}
 function renderPlan4(p){t4planData=p;document.getElementById('t4-safety').innerHTML=(p.safety_notes||[]).map(n=>`<div class="safety-item"><div class="safety-dot"></div><div class="safety-item-text">${n.text}</div></div>`).join('');document.getElementById('t4-closing').textContent=p.why_it_works||'';renderAvoid4(p.avoid||[]);renderEat4(p.eat||[]);while(t4state.daysDone.length<t4state.totalDays)t4state.daysDone.push(false);renderWeekDots4();renderDayCards4();if(t4state.challengeStarted){document.getElementById('t4challengeBtn').textContent='Undo';document.getElementById('t4challengeBtn').style.background='rgba(0,0,0,0.2)';document.getElementById('t4challengeBtn').style.color='#fff';document.getElementById('t4challengeSub').textContent='Challenge in progress — keep going!';}updateXP4(0);setTimeout(()=>{document.querySelectorAll('#t4-main .score-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},80);});},200);document.getElementById('t4-loading').style.display='none';document.getElementById('t4-main').style.display='block';}
-async function loadPlan4(){if(t4planData)return;document.getElementById('t4-loading').style.display='flex';document.getElementById('t4-error').style.display='none';document.getElementById('t4-main').style.display='none';const cached=localStorage.getItem(PLAN_KEY4);const cachedDate=localStorage.getItem(PLAN_DATE_KEY4);if(cached&&cachedDate===todayStr()){renderPlan4(JSON.parse(cached));return;}
-const profileRaw=localStorage.getItem('longevity_profile');const profile=profileRaw?JSON.parse(profileRaw):{};
-const ageCtxSleep={'0–30':'Young adult — poor sleep disrupts HGH release and memory consolidation. Focus on melatonin precursors and cutting evening stimulants.','31–60':'Middle-aged adult — cortisol dysregulation and caffeine sensitivity increase. Prioritise tryptophan-rich evening foods and cutting alcohol.','61+':'Older adult — melatonin production naturally declines with age. Foods that support the serotonin-melatonin pathway and reduce nighttime cortisol are most critical.'}[profile.ageRange]||'';
-const prompt=`You are a longevity nutrition guide. Generate a personalised Poor Sleep Quality plan.
+async function loadPlan4 {
+    const cached = localStorage.getItem('topic4_plan');
+    const cachedDate = localStorage.getItem('topic4_plan_date');
+    if (cached && cachedDate === todayStr()) {
+        t4planData = JSON.parse(cached);
+        renderPlan4();
+        return;
+    }
+    document.getElementById('t4-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: Poor Sleep Quality.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
+    try {
+        const res = await fetch('/.netlify/functions/chat', {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
+        });
+        const data = await res.json();
+        t4planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic4_plan', JSON.stringify(t4planData));
+        localStorage.setItem('topic4_plan_date', todayStr());
+        renderPlan4();
+    } catch(e) {
+        document.getElementById('t4-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan4()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
+    }
+}
 
-USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ')||'None reported'}
-- Medications: ${(profile.medications||[]).join(', ')||'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ')||'None reported'}
-- Dietary preference: ${profile.dietType||'No restriction'}
-- Age range: ${profile.ageRange||'Not specified'} — ${ageCtxSleep}
-- Activity: ${profile.activityLevel||'Not specified'}
-
-SLEEP RESEARCH:
-Foods harm sleep: Caffeine after 2pm (blocks adenosine receptors for 6-8 hours, Risk 90), Alcohol (disrupts REM sleep cycles, Risk 85), Sugary foods/refined carbs before bed (blood sugar crashes interrupt sleep, Risk 80), Heavy/spicy meals within 3hrs of bed (raises core body temperature, Risk 75), Energy drinks (caffeine + stimulants, Risk 72), Processed foods (inflammatory, disrupts circadian rhythm, Risk 65).
-Foods support sleep: Tart cherries (natural melatonin source, highest dietary melatonin, Boost 90), Kiwi fruit (serotonin, folate, antioxidants — shown to improve sleep onset, Boost 85), Almonds/walnuts (magnesium + melatonin, Boost 80), Oats (melatonin precursors + complex carbs for tryptophan uptake, Boost 78), Chamomile tea (apigenin binds GABA receptors, promotes calmness, Boost 75), Turkey/chicken (tryptophan → serotonin → melatonin pathway, Boost 72), Bananas (magnesium + B6 + tryptophan, Boost 68).
-Key mechanisms: Tryptophan → 5-HTP → serotonin → melatonin pathway, GABA receptor activation for calmness, adenosine pathway, circadian rhythm regulation via light-food timing, cortisol reduction.
-Safety: Diabetes medication — tart cherries are high sugar, monitor blood sugar; Blood thinners — consistent vitamin K; Nut allergy — avoid almonds/walnuts, use oats and kiwi instead; Blood pressure medication — avoid high-tyramine aged foods in evening; NEVER recommend medications.
-
-CRITICAL RULES: Not medical advice. Never prescribe medications. Personalise to user. Return ONLY valid JSON.
-
-Return exactly:
-{"intro":"One punchy sentence (max 12 words) about poor sleep and cellular aging","safety_notes":[{"text":"personalised safety rule"}],"avoid":[{"name":"food","reason":"brief reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"brief reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_2_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"week_3_plan":[{"day":"Monday","breakfast":"...","lunch":"...","dinner":"...","snack":"..."}],"why_it_works":"One sentence on why this extends lifespan"}
-
-Rules: 5-6 avoid, 5-6 eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan) each with all 7 days — vary meals so users don't eat the same thing every week. score_level: high=70-100, medium=40-69, low=1-39. Short text for mobile. Evening snacks should support sleep across all 3 weeks. Avoid allergens.`;
-try{const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model:'claude-3-5-haiku-20241022',max_tokens:4000,messages:[{role:'user',content:prompt}]})});if(!res.ok)throw new Error(`API error ${res.status}`);const data=await res.json();let text=data.content[0].text.trim();if(text.startsWith('```'))text=text.split('\n').slice(1,-1).join('\n');const plan=JSON.parse(text);localStorage.setItem(PLAN_KEY4,JSON.stringify(plan));localStorage.setItem(PLAN_DATE_KEY4,todayStr());renderPlan4(plan);}catch(err){console.error(err);document.getElementById('t4-loading').style.display='none';document.getElementById('t4-error').style.display='block';}}
 
 /* ══════════════════════════════════════
    TOPIC 2 — HIGH BLOOD PRESSURE STATE
@@ -4100,155 +4032,41 @@ function renderPlan2(p) {
     document.getElementById('t2-main').style.display    = 'block';
 }
 
-async function loadPlan2() {
-    if (t2planData) return;
-
-    document.getElementById('t2-loading').style.display = 'flex';
-    document.getElementById('t2-error').style.display   = 'none';
-    document.getElementById('t2-main').style.display    = 'none';
-
-    const cached     = localStorage.getItem(PLAN_KEY2);
-    const cachedDate = localStorage.getItem(PLAN_DATE_KEY2);
+async function loadPlan2 {
+    const cached = localStorage.getItem('topic2_plan');
+    const cachedDate = localStorage.getItem('topic2_plan_date');
     if (cached && cachedDate === todayStr()) {
-        renderPlan2(JSON.parse(cached));
+        t2planData = JSON.parse(cached);
+        renderPlan2();
         return;
     }
-
-    const profileRaw = localStorage.getItem('longevity_profile');
-    const profile = profileRaw ? JSON.parse(profileRaw) : {};
-
-    const ageGuidanceHP = {
-        '0–30':  'Young adult — build preventive habits now to avoid early hypertension. Sodium reduction and potassium-rich foods are the priority.',
-        '31–60': 'Middle-aged adult — blood pressure risk rises significantly in this range. DASH diet adherence and sodium reduction are most impactful.',
-        '61+':   'Older adult — arterial stiffness is elevated and eNOS function declines with age. Potassium-sodium balance and antioxidant-rich foods are critical.'
-    };
-    const weightGuidanceHP = {
-        'Under 140 lbs / 63 kg':  'Lower body weight — maintain with nutrient-dense, low-sodium foods.',
-        '140–180 lbs / 63–82 kg': 'Healthy weight range — focus on consistent sodium reduction and potassium intake.',
-        '180–220 lbs / 82–100 kg':'Moderately elevated weight — reducing weight significantly lowers blood pressure. Prioritise DASH principles and caloric quality.',
-        'Over 220 lbs / 100 kg':  'Higher body weight — each 10 lbs lost can reduce systolic BP by 5-7 mmHg. Strong emphasis on sodium reduction, DASH diet, and eliminating processed foods.'
-    };
-    const ageCtx    = ageGuidanceHP[profile.ageRange]     || '';
-    const weightCtx = weightGuidanceHP[profile.weightRange] || '';
-
-    const userContext = `USER HEALTH PROFILE:
-- Conditions: ${(profile.conditions||[]).join(', ') || 'None reported'}
-- Medications: ${(profile.medications||[]).join(', ') || 'None reported'}
-- Allergies: ${(profile.allergies||[]).join(', ') || 'None reported'}
-- Dietary preference: ${profile.dietType || 'No restriction'}
-- Age range: ${profile.ageRange || 'Not specified'} — ${ageCtx}
-- Weight range: ${profile.weightRange || 'Not specified'} — ${weightCtx}
-- Activity: ${profile.activityLevel || 'Not specified'}`;
-
-    const HP_RESEARCH = `
-HIGH BLOOD PRESSURE / HYPERTENSION — RESEARCH & SAFETY RULES
-IMPORTANT: This is general nutrition guidance only. Never prescribe or recommend medications.
-
-Condition: Chronically elevated blood pressure damages arterial walls, accelerates vascular aging, and raises risk of heart disease, stroke, and kidney failure.
-Key cellular mechanisms:
-- eNOS dysfunction → reduced nitric oxide → arteries stiffen and lose elasticity
-- Dysregulated Na+/K+-ATPase pump → sodium retention → increased blood volume → higher pressure
-- Overactive Angiotensin II/AT1R pathway → chronic vasoconstriction
-- Oxidative stress depletes endogenous antioxidant defenses (catalase, SOD, glutathione)
-
-DASH DIET (primary for hypertension):
-Key foods: All vegetables (especially leafy greens), fruits, whole grains, low-fat dairy, lean protein, legumes, nuts, olive oil. Use herbs over salt.
-Avoid: High sodium (max 2300mg/day), red/processed meats, full-fat dairy, added sugars, alcohol, processed foods.
-
-MEDITERRANEAN additions: Olive oil supports eNOS; fatty fish reduces Angiotensin II pathway activity and vascular inflammation.
-PLANT-BASED additions: Reduces overall sodium load; AMPK activation helps reduce arterial stiffness.
-OKINAWAN additions: Low-sodium principle (hara hachi bu); NF-kB suppression reduces vascular inflammation.
-
-Top foods to AVOID for blood pressure (with risk scores):
-- Salt/high-sodium foods (>2300mg/day) — Risk 92/100 — directly raises blood pressure by expanding blood volume
-- Processed/cured meats — Risk 88/100 — extremely high sodium, triggers Angiotensin II pathway
-- Sugary drinks/sodas — Risk 80/100 — drives insulin resistance, indirectly elevates BP
-- Alcohol — Risk 78/100 — raises blood pressure acutely and chronically
-- Full-fat dairy/butter — Risk 70/100 — saturated fat impairs vascular endothelial function
-- Caffeine/energy drinks — Risk 60/100 — acute vasoconstriction, raises BP short-term
-
-Top foods to EAT for blood pressure (with boost scores):
-- Leafy greens (spinach, kale, Swiss chard) — Boost 90/100 — potassium balances sodium, nitrates activate eNOS to produce nitric oxide
-- Berries (blueberries, strawberries) — Boost 85/100 — anthocyanins improve arterial flexibility and reduce oxidative stress
-- Beets/beet juice — Boost 80/100 — dietary nitrates directly activate eNOS, shown to lower systolic BP
-- Bananas & potassium-rich foods — Boost 78/100 — potassium optimises Na+/K+-ATPase pump function
-- Fatty fish (salmon, sardines) — Boost 72/100 — omega-3s reduce Angiotensin II pathway activity
-- Olive oil (extra virgin) — Boost 68/100 — oleocanthal reduces vascular inflammation, polyphenols support eNOS
-
-Key safety rules (PERSONALISE TO USER):
-- CKD — HIGH RISK: high-potassium foods require a modified plan with a doctor
-- ACE inhibitors/ARBs — monitor potassium carefully with leafy greens and bananas
-- Blood thinners — keep vitamin K intake (from greens) consistent daily, do not suddenly increase
-- Diuretics — monitor electrolytes, especially potassium
-- NEVER recommend adjusting or stopping blood pressure medications
-- Always advise consulting a healthcare provider before changing diet if on BP medication
-`;
-
-    const prompt = `You are a longevity nutrition guide. Generate a personalised High Blood Pressure Risk plan.
-
-RESEARCH DATA:
-${HP_RESEARCH}
-
-${userContext}
-
-CRITICAL RULES:
-- You are NOT a medical professional. NEVER prescribe, mention, or recommend any medications.
-- All advice is general nutrition and longevity guidance only.
-- Always advise consulting a healthcare provider for medical decisions.
-- Return ONLY valid JSON, no markdown, no extra text.
-
-Return exactly this JSON structure:
-{
-  "intro": "One short punchy sentence (max 12 words) about blood pressure and ageing — mention arterial stiffness or nitric oxide, keep it plain",
-  "safety_notes": [{"text": "personalised safety rule for this user based on their conditions, medications, and allergies"}],
-  "avoid": [{"name": "food", "reason": "brief longevity reason", "score": 85, "score_level": "high"}],
-  "eat": [{"name": "food", "reason": "brief longevity reason", "score": 80, "score_level": "low"}],
-  "week_plan": [
-    {"day": "Monday", "breakfast": "...", "lunch": "...", "dinner": "...", "snack": "..."}
-  ],
-  "week_2_plan": [
-    {"day": "Monday", "breakfast": "...", "lunch": "...", "dinner": "...", "snack": "..."}
-  ],
-  "week_3_plan": [
-    {"day": "Monday", "breakfast": "...", "lunch": "...", "dinner": "...", "snack": "..."}
-  ],
-  "why_it_works": "One simple sentence on why this plan extends lifespan"
-}
-
-Rules: 5-6 items in avoid, 5-6 in eat. Provide 3 full weeks (week_plan, week_2_plan, week_3_plan), each with all 7 days — vary the meals so users don't repeat the same food every week. score_level: high=70-100, medium=40-69, low=1-39. Personalise safety_notes and food choices to this user's profile. Keep all text short for mobile. Make all 3 weeks DASH-focused with low sodium, high potassium foods. Avoid any foods the user is allergic to.`;
-
+    document.getElementById('t2-loading').style.display = 'flex';
+    const profile = JSON.parse(localStorage.getItem('longevity_profile') || '{}');
+    const prompt = `You are a longevity nutrition expert. Create a personalised meal plan for: High Blood Pressure.
+User profile — Age: ${profile.ageRange||'not specified'}, Diet: ${profile.dietType||'not specified'}, Conditions: ${(profile.conditions||[]).join(', ')||'none'}, Allergies: ${(profile.allergies||[]).join(', ')||'none'}, Medications: ${(profile.medications||[]).join(', ')||'none'}, Activity: ${profile.activityLevel||'not specified'}.
+Return ONLY valid JSON (no markdown, no extra text):
+{"intro":"one sentence on longevity science for this topic","safety_notes":[{"text":"safety note for this user"}],"avoid":[{"name":"food","reason":"reason","score":85,"score_level":"high"}],"eat":[{"name":"food","reason":"reason","score":80,"score_level":"low"}],"week_plan":[{"day":"Monday","breakfast":"specific meal","lunch":"specific meal","dinner":"specific meal","snack":"specific snack"}],"why_it_works":"one sentence on the mechanism"}
+Rules: 5-6 avoid foods, 5-6 eat foods, 7 days in week_plan. score_level: high=70-100, medium=40-69, low=1-39. Personalise to allergies and diet type. Keep all text short for mobile. Never prescribe medications. Always advise consulting a healthcare provider.`;
     try {
         const res = await fetch('/.netlify/functions/chat', {
             method: 'POST',
-            headers: {
-                'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-                model: 'claude-3-5-haiku-20241022',
-                max_tokens: 4000,
-                messages: [{ role: 'user', content: prompt }]
-            })
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({model: 'claude-opus-4-5', max_tokens: 2000, messages: [{role:'user', content: prompt}]})
         });
-
-        if (!res.ok) throw new Error(`API error ${res.status}`);
         const data = await res.json();
-        let text = data.content[0].text.trim();
-        if (text.startsWith('```')) text = text.split('\n').slice(1,-1).join('\n');
-        const plan = JSON.parse(text);
-        localStorage.setItem(PLAN_KEY2, JSON.stringify(plan));
-        localStorage.setItem(PLAN_DATE_KEY2, todayStr());
-        renderPlan2(plan);
-    } catch (err) {
-        console.error(err);
-        document.getElementById('t2-loading').style.display = 'none';
-        document.getElementById('t2-error').style.display   = 'block';
+        t2planData = JSON.parse(data.content[0].text);
+        localStorage.setItem('topic2_plan', JSON.stringify(t2planData));
+        localStorage.setItem('topic2_plan_date', todayStr());
+        renderPlan2();
+    } catch(e) {
+        document.getElementById('t2-loading').innerHTML = `<div style="background:#fff0f0;border-radius:16px;padding:24px;margin:16px;text-align:center"><p style="color:#c0392b;font-weight:600;margin-bottom:12px">Couldn't generate your plan. Please try again.</p><button onclick="loadPlan2()" style="background:#1a3a5c;color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:1rem;cursor:pointer">Try again</button></div>`;
     }
 }
+
 
 /* ══════════════════════════════════════
    INIT
 ══════════════════════════════════════ */
-localStorage.clear();
 loadState();
 loadState2();
 loadState3();
