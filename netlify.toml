@@ -1,0 +1,10 @@
+[build]
+  functions = "netlify/functions"
+
+[functions]
+  timeout = 26
+
+[[redirects]]
+  from = "/"
+  to = "/longevity_app.html"
+  status = 200
